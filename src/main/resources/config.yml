@@ -1,0 +1,4 @@
+#The plugin will read this config only, so the server must not be stopped to make changes, just change the values and reload the server.
+
+#Set to TRUE if all Animals should be tameable with a golden carrot
+allTameable: true

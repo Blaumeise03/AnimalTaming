@@ -1,0 +1,5 @@
+# Project exclude paths
+AnimalTaming.iml
+.idea/
+target/
+.idea

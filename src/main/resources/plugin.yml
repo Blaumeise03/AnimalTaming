@@ -1,0 +1,25 @@
+name: AnimalTaming
+version: 1.0-SNAPSHOT
+main: de.blaumeise03.animalTaming.AnimalTaming
+description: Give animals owner and prevent others to use your animals.
+api-version: 1.13
+author: Blaumeise03
+website: http://blaumeise03.de/
+
+permissions:
+  animalTaming.untame:
+    default: true
+    description: Permission for untaming animals
+  animalTaming.adminUntame:
+    default: op
+    description: Permission for untaming all animals, even if the player is not the owner
+  animalTaming.*:
+    description: Wildcard
+    default: op
+    children:
+      animalTaming.untame: true
+      animalTaming.adminUntame: true
+commands:
+  untame:
+    description: Untame the given Entity
+    permission: animalTaming.untame
