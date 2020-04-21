@@ -22,7 +22,7 @@ import java.util.UUID;
 
 public class Listeners implements Listener {
 
-    private Map<Player, Long> tameDelay = new HashMap<>();
+    private static Map<Player, Long> tameDelay = new HashMap<>();
 
     @EventHandler
     public void onTame(EntityTameEvent e) {
@@ -57,56 +57,7 @@ public class Listeners implements Listener {
     public void onClick(PlayerInteractEntityEvent e) {
         if(!AnimalTaming.allTameAble)
             return;
-        Player p = e.getPlayer();
-        Entity entity = e.getRightClicked();
-        UUID owner = getOwnerUUID(entity);
-        if(owner != null && !owner.equals(p.getUniqueId())) {
-            if(!p.hasPermission("animalTaming.adminUntame")) {
-                p.sendTitle("", "§cDieses Tier gehört dir nicht!", 5, 30, 10);
-                e.setCancelled(true);
-                return;
-            }else {
-                if(!tameDelay.containsKey(p) || (System.currentTimeMillis() - tameDelay.get(p)) > 1000)
-                    p.sendMessage(ChatColor.YELLOW + "Dieses Tier gehört dir nicht, du hast aber Admin-Berechtigungen!");
-            }
-        }
-        //if(entity instanceof Tameable)
-        //    return;
-        if(!(entity instanceof Animals))
-            return;
-        if(tameDelay.containsKey(p)){
-            if((System.currentTimeMillis() - tameDelay.get(p)) < 1000){
-                return;
-            }else tameDelay.remove(p);
-        }
-        Set<String> tags = entity.getScoreboardTags();
-
-        ItemStack stack = p.getInventory().getItemInMainHand();
-        if(stack.getType() == Material.GOLDEN_CARROT){
-            for(String s : tags) {
-                if(s.toLowerCase().startsWith("owner")){
-                    p.sendTitle("", "§cDieses Tier ist bereits gezähmt!", 5, 30, 10);
-                    return;
-                }
-            }
-            if(stack.getAmount() <= 1) p.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
-            else {
-                stack.setAmount(stack.getAmount() - 1);
-                p.getInventory().setItemInMainHand(stack);
-            }
-            entity.addScoreboardTag("Owner-" + p.getUniqueId().toString() + "-");
-            p.sendTitle("", "§aDu hast das Tier gezähmt!", 5, 30, 10);
-            tameDelay.put(p, System.currentTimeMillis());
-        }
-        if(stack.getType() == Material.REDSTONE) {
-            if(owner != null && owner.equals(p.getUniqueId()) || p.hasPermission("animalTaming.adminUntame")) {
-                BaseComponent base = new TextComponent("Klicke hier um das Tier zu entzähmen!");
-                base.setColor(ChatColor.DARK_GREEN);
-                base.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/untame " + entity.getUniqueId().toString()));
-                p.spigot().sendMessage(base);
-                tameDelay.put(p, System.currentTimeMillis());
-            }
-        }
+        e.setCancelled(processInteract(e.getRightClicked(), e.getPlayer()));
     }
 
     @EventHandler
@@ -116,24 +67,34 @@ public class Listeners implements Listener {
         if(!(entity instanceof Player))
             return;
         Player p = (Player) entity;
-        UUID id = getOwnerUUID(mount);
-        if(id != null && !id.equals(p.getUniqueId())){
-            e.setCancelled(true);
-            p.sendTitle("", "§cDieses Tier gehört dir nicht!", 5, 30, 10);
-            //p.spigot().sendMessage(ChatMessageType.ACTION_BAR, new TextComponent("§cDieses Tier gehört dir nicht!"));
+        processInteract(mount, p);
+    }
+
+    private static boolean processInteract(Entity e, Player p){
+        UUID owner = getOwnerUUID(e);
+        if(owner != null && !owner.equals(p.getUniqueId())) {
+            if(!p.hasPermission("animalTaming.adminUntame")) {
+                p.sendTitle("", "§cDieses Tier gehört dir nicht!", 5, 30, 10);
+                return true;
+            }else {
+                if(!tameDelay.containsKey(p) || (System.currentTimeMillis() - tameDelay.get(p)) > 1000)
+                    p.sendMessage(ChatColor.YELLOW + "Dieses Tier gehört dir nicht, du hast aber Admin-Berechtigungen!");
+            }
         }
+
         if(tameDelay.containsKey(p)){
             if((System.currentTimeMillis() - tameDelay.get(p)) < 1000){
-                return;
+                return false;
             }else tameDelay.remove(p);
         }
+
+        Set<String> tags = e.getScoreboardTags();
         ItemStack stack = p.getInventory().getItemInMainHand();
-        Set<String> tags = entity.getScoreboardTags();
-        if(stack.getType() == Material.GOLDEN_CARROT){
+        if(stack.getType() == Material.GLISTERING_MELON_SLICE){
             for(String s : tags) {
                 if(s.toLowerCase().startsWith("owner")){
                     p.sendTitle("", "§cDieses Tier ist bereits gezähmt!", 5, 30, 10);
-                    return;
+                    return false;
                 }
             }
             if(stack.getAmount() <= 1) p.getInventory().setItemInMainHand(new ItemStack(Material.AIR));
@@ -141,23 +102,24 @@ public class Listeners implements Listener {
                 stack.setAmount(stack.getAmount() - 1);
                 p.getInventory().setItemInMainHand(stack);
             }
-            entity.addScoreboardTag("Owner-" + p.getUniqueId().toString() + "-");
+            e.addScoreboardTag("Owner-" + p.getUniqueId().toString() + "-");
+            if(e instanceof Tameable) {
+                ((Tameable) e).setOwner(p);
+            }
             p.sendTitle("", "§aDu hast das Tier gezähmt!", 5, 30, 10);
             tameDelay.put(p, System.currentTimeMillis());
         }
         if(stack.getType() == Material.REDSTONE) {
-            if(id != null && id.equals(p.getUniqueId()) || p.hasPermission("animalTaming.adminUntame")) {
+            if(owner != null && owner.equals(p.getUniqueId()) || p.hasPermission("animalTaming.adminUntame")) {
                 BaseComponent base = new TextComponent("Klicke hier um das Tier zu entzähmen!");
                 base.setColor(ChatColor.DARK_GREEN);
-                base.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/untame " + mount.getUniqueId().toString()));
+                base.setClickEvent(new ClickEvent(ClickEvent.Action.RUN_COMMAND, "/untame " + e.getUniqueId().toString()));
                 p.spigot().sendMessage(base);
                 tameDelay.put(p, System.currentTimeMillis());
             }
         }
-    }
 
-    private static void processInteract(Entity e, Player p){
-
+        return false;
     }
 
     static UUID getOwnerUUID(Entity e) {

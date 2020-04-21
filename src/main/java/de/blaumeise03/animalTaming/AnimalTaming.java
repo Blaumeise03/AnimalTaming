@@ -1,9 +1,9 @@
 package de.blaumeise03.animalTaming;
 
-import de.blaumeise03.spigotUtils.AdvancedPlugin;
-import de.blaumeise03.spigotUtils.Command;
-import de.blaumeise03.spigotUtils.CommandHandler;
-import de.blaumeise03.spigotUtils.Configuration;
+import de.blaumeise03.blueUtils.AdvancedPlugin;
+import de.blaumeise03.blueUtils.Configuration;
+import de.blaumeise03.blueUtils.command.Command;
+import de.blaumeise03.blueUtils.exceptions.CommandNotFoundException;
 import net.md_5.bungee.api.chat.BaseComponent;
 import net.md_5.bungee.api.chat.ClickEvent;
 import net.md_5.bungee.api.chat.TextComponent;
@@ -35,10 +35,20 @@ public class AnimalTaming extends AdvancedPlugin {
         allTameAble = config.getBoolean("allTameable");
         getLogger().info("Players" + (allTameAble ? " can" : " can not") + " tame all animals.");
         registerEvent(new Listeners());
-        CommandHandler handler = this.getHandler();
-        new Command(handler, "untame", "Entzähmt das angegebene Tier.", new Permission("animalTaming.untame"), false) {
+        Command untameCmd = new Command( "untame", false, false, new Permission("animalTaming.untame")) {
+            /**
+             * This method is called when a player executes this command
+             *
+             * @param sender         the {@link CommandSender} who executes the command
+             * @param args           the arguments passed to the command
+             * @param isPlayer       if the <code>sender</code> is a {@link Player Player}
+             * @param isThird        if the command was executed by the <code>originalSender</code> for another player
+             *                       e.g: /command player args.. - the command, if {@link Command} third-executable is true,
+             *                       gets executed at the 'player' passed as first argument
+             * @param originalSender The original sender, equals <code>sender</code> if command was not third-executed
+             */
             @Override
-            public void onCommand(String[] args, CommandSender sender) {
+            public void execute(CommandSender sender, String[] args, boolean isPlayer, boolean isThird, CommandSender originalSender) {
                 if(args.length < 1) {
                     sender.sendMessage(ChatColor.RED + "Du musst eine UUID angeben!");
                     return;
@@ -55,7 +65,6 @@ public class AnimalTaming extends AdvancedPlugin {
                     sender.sendMessage(ChatColor.RED + "Entität nicht gefunden!");
                 }
                 if(sender instanceof Player) {
-
                     UUID owner = Listeners.getOwnerUUID(e);
                     if(owner == null) {
                         sender.sendMessage(ChatColor.RED + "Entität ist nicht gezähmt!");
@@ -86,6 +95,20 @@ public class AnimalTaming extends AdvancedPlugin {
                 }
             }
         };
+        try {
+            getHandler().addCommand(untameCmd);
+        } catch (CommandNotFoundException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Override
+    public boolean onReload() {
+        getLogger().info("Reloading config..");
+        config.reload();
+        allTameAble = config.getBoolean("allTameable");
+        getLogger().info("Players" + (allTameAble ? " can" : " can not") + " tame all animals.");
+        return true;
     }
 
     @Override
